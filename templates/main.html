@@ -1,0 +1,102 @@
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>{{ title }}</title>
+</head>
+<style>
+body {
+  font-size: 12pt;
+}
+nav {
+  display: flex;
+  flex-wrap: wrap;
+  flex-direction: column;
+  height:5em;
+}
+nav>a {
+  display: flex;
+}
+a {
+  color: #336699;
+  text-decoration: none;
+}
+a:hover {
+  color: #66ccff;
+}
+h1 {
+  padding: 0;
+  margin: 0;
+  font-size: 12pt;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  border: solid 1px #555;  
+}
+tr {
+  border-bottom: solid 1px #888;
+}
+th {
+  text-align: left;
+  background: lightgray;
+}
+.edit {
+  display: inline-block;
+  padding: 5px 15px;
+  background: #369;
+  border: solid 1px #246;
+  border-radius: 8px;
+  color: white;
+  margin-top: 8px;
+}
+</style>
+<body>
+
+<h1>IFC 4.3.0.0 RC1</h1>
+
+<nav>
+    {% for column in navigation %}
+        {% for cell in column %}
+            <a href='{{ cell["url"] }}'>{{ cell['title'] }}</a>
+        {% endfor %}
+    {% endfor %}
+</nav>
+
+<form method='post' action='/search' style='float: right; margin:20px;'>
+<input type='text' name='query' value='' />
+<input type='submit' value='Search' />
+</form>
+
+<h2>6.3.{{ number }} {{ entity}}</h2>
+
+<div id='contributors'></div>
+<a class='edit' href='https://github.com/buildingSMART/IFC4.3.x-development/blob/master/{{ path }}'>Edit on Github</a>
+<script>
+fetch('https://api.github.com/repos/buildingSMART/IFC4.3.x-development/commits?path={{ path }}').then(r => r.json()).then(j => {
+  let n = {};
+  j.forEach(c => {
+    n[c.author.avatar_url] = (n[c.author.avatar_url || 0]) + 1;
+  });
+  let es = Object.entries(n);
+  document.getElementById('contributors').appendChild(
+    document.createTextNode(es.length + ' contributor(s): ')
+  );
+  es.map(kv => [kv[1], kv[0]]).sort().forEach(kv => {
+    let img = document.createElement('img');
+    img.src = kv[1] + "&s=32";
+    img.style.borderRadius = '16px';
+    img.style.verticalAlign = 'middle';
+    document.getElementById('contributors').appendChild(img);
+  });
+  console.log(j[0])
+  document.getElementById('contributors').innerHTML += '<br />Last change: ' +
+  '<em>' + j[0].commit.message + '</em>' + ' by ' + j[0].commit.author.name + ' on ' + (new Date(j[0].commit.author.date)).toLocaleString();
+});
+</script>
+
+<h3>6.3.{{ number }}.1 Semantic definitions at the entity</h3>
+
+{{ content | safe }}
+
+</body>
+</html>
