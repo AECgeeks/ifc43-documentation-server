@@ -1,6 +1,7 @@
 import re
 import os
 import glob
+import json
 import hashlib
 import subprocess
 
@@ -13,6 +14,8 @@ from bs4 import BeautifulSoup
 from flask import Flask, send_file, render_template, abort, url_for, request, send_from_directory
 
 app = Flask(__name__)
+
+entity_to_package = json.load(open("entity_to_package.json", encoding="utf-8"))
 
 navigation_entries = [
     ("Cover", "Contents", "Foreword", "Introduction"),
@@ -150,9 +153,21 @@ def resource(resource):
         idx = entity_names.index(resource) + 1
     except:
         abort(404)
+    
+    package = entity_to_package.get(resource)
+    if not package:
+        abort(404)
+    
+    md = None    
+    md_root = "data/docs/schemas"
+    for category in os.listdir(md_root):
+        for module in os.listdir(os.path.join(md_root, category)):
+            if module == package:
+                md = os.path.join("data/docs/schemas", category, module, "Entities", resource + ".md")
+                
+    if not md:
+        abort(404)
         
-    path = 'docs/%s/%s.md' % (resource[3], resource)
-    md = os.path.join('data', path)
     with open(md, 'r', encoding='utf-8') as f:
     
         mdc = f.read()
@@ -188,7 +203,7 @@ def resource(resource):
         
         html = str(soup)
         
-        return render_template('main.html', navigation=navigation_entries, content=html, number=idx, entity=resource, path=path)
+        return render_template('main.html', navigation=navigation_entries, content=html, number=idx, entity=resource, path=md[5:])
 
 @app.route('/IFC/RELEASE/IFC4x3/RC1/HTML/lisuting')
 @app.route('/')

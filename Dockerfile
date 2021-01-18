@@ -15,13 +15,14 @@ RUN unzip -d `python3 -c 'import site; print(site.getusersitepackages())'` /tmp/
 
 WORKDIR /
 
-ADD wsgi.py main.py transform_to_xml.py /
+ADD wsgi.py main.py parse_xmi.py transform_to_xml.py /
 ADD templates/* /templates/
 RUN git clone https://github.com/buildingSMART/IFC4.3.x-development /data
 
 RUN mkdir /svgs
 RUN mkdir /xml
 RUN python3 transform_to_xml.py /data/docs /xml
+RUN python3 parse_xmi.py
 RUN /solr-8.6.3/bin/solr start -force && /solr-8.6.3/bin/solr create_core -force -c ifc && echo 1 && /solr-8.6.3/bin/post -c ifc /xml && echo 2 && /solr-8.6.3/bin/solr stop && echo 3
 
 COPY supervisord.conf /etc/supervisord.conf
