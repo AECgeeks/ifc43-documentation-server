@@ -26,14 +26,40 @@ navigation_entries = [
 ]
 
 def make_entries(x):
+    md_root = "data/docs/schemas"
+    categories = [d for d in os.listdir(md_root) if os.path.isdir(os.path.join(md_root, d))]
+        
     if isinstance(x, (list, tuple)):
         return type(x)(map(make_entries, x))
     elif x == 'Alphabetical listings':
         return {'url': '/IFC/RELEASE/IFC4x3/RC1/HTML/listing', 'title': x}
+    elif x.split(" ")[0].lower() in categories:
+        return {'url': '/IFC/RELEASE/IFC4x3/RC1/HTML/chapter-1', 'title': x}
     else:
         return {'url': '#', 'title': x}
+
+def make_counter(start=0):
+    n = start
+    def counter():
+        nonlocal n
+        n += 1
+        if n > 14:
+            return None
+        if n > 8:
+            return chr(ord('A') + n - 9)
+        elif n >= 1:
+            return n
+    return counter
+    
+section_counter = make_counter(-4)
         
-navigation_entries = make_entries(navigation_entries)
+def number_entries(x):
+    if isinstance(x, (list, tuple)) and set(map(type, x)) == {dict}:
+        return type(x)(dict(**di, number=section_counter()) for i, di in enumerate(x))
+    else:
+        return type(x)(map(number_entries, x))
+        
+navigation_entries = number_entries(make_entries(navigation_entries))
 
 entity_names = sorted(s.split('/')[-1][:-3] for s in glob.glob("data/docs/**/*.md", recursive=True))
 
@@ -203,13 +229,17 @@ def resource(resource):
         
         html = str(soup)
         
-        return render_template('main.html', navigation=navigation_entries, content=html, number=idx, entity=resource, path=md[5:])
+        return render_template('entity.html', navigation=navigation_entries, content=html, number=idx, entity=resource, path=md[5:])
 
-@app.route('/IFC/RELEASE/IFC4x3/RC1/HTML/lisuting')
+@app.route('/IFC/RELEASE/IFC4x3/RC1/HTML/listing')
 @app.route('/')
 def listing():
     items = [{'number': (i + 1), 'url': url_for('resource', resource=n), 'title': n} for i, n in enumerate(entity_names)]
     return render_template('list.html', navigation=navigation_entries, items=items)
+    
+@app.route('/IFC/RELEASE/IFC4x3/RC1/HTML/chapter-<n>')
+def chapter(n):
+    return "bier"
 
 
 @app.route('/search', methods=['GET', 'POST'])
