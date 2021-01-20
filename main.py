@@ -25,18 +25,27 @@ navigation_entries = [
     ("Examples", "Change logs", "Bibliography", "Index")
 ]
 
+def to_dict(x):
+    if isinstance(x, (list, tuple)):
+        return type(x)(map(to_dict, x))
+    else:
+        return {"title": x}
+
 def make_entries(x):
     md_root = "data/docs/schemas"
     categories = [d for d in os.listdir(md_root) if os.path.isdir(os.path.join(md_root, d))]
         
     if isinstance(x, (list, tuple)):
         return type(x)(map(make_entries, x))
-    elif x == 'Alphabetical listings':
-        return {'url': '/IFC/RELEASE/IFC4x3/RC1/HTML/listing', 'title': x}
-    elif x.split(" ")[0].lower() in categories:
-        return {'url': '/IFC/RELEASE/IFC4x3/RC1/HTML/chapter-1', 'title': x}
+    
+    elif x['title'] == 'Alphabetical listings':
+        url = '/IFC/RELEASE/IFC4x3/RC1/HTML/listing'
+    elif type(x['number']) == int:
+        url = '/IFC/RELEASE/IFC4x3/RC1/HTML/chapter-%d/' % x['number']
     else:
-        return {'url': '#', 'title': x}
+        url = '#'
+    
+    return dict(**x, url=url)
 
 def make_counter(start=0):
     n = start
@@ -59,7 +68,19 @@ def number_entries(x):
     else:
         return type(x)(map(number_entries, x))
         
-navigation_entries = number_entries(make_entries(navigation_entries))
+navigation_entries = make_entries(number_entries(to_dict(navigation_entries)))
+
+def chapter_lookup(number=None, cat=None):
+
+    def do_chapter_lookup(x):
+        if isinstance(x, (list, tuple)):
+            return next((v for v in map(do_chapter_lookup, x) if v is not None), None)
+        if number is not None and x['number'] == number:
+            return x
+        if cat is not None and x['title'].split(" ")[0].lower() == cat:
+            return x
+            
+    return do_chapter_lookup(navigation_entries)
 
 entity_names = sorted(s.split('/')[-1][:-3] for s in glob.glob("data/docs/**/*.md", recursive=True))
 
@@ -237,10 +258,47 @@ def listing():
     items = [{'number': (i + 1), 'url': url_for('resource', resource=n), 'title': n} for i, n in enumerate(entity_names)]
     return render_template('list.html', navigation=navigation_entries, items=items)
     
-@app.route('/IFC/RELEASE/IFC4x3/RC1/HTML/chapter-<n>')
+@app.route('/IFC/RELEASE/IFC4x3/RC1/HTML/chapter-<n>/')
 def chapter(n):
-    return "bier"
+    try: n = int(n)
+    except: pass
+    
+    md_root = "data/docs/schemas"
+    t = chapter_lookup(number=n).get('title')
+    cat = t.split(" ")[0].lower()
+    
+    fn = os.path.join(md_root, cat, "README.md")
+    html = markdown.markdown(open(fn).read())
+    soup = BeautifulSoup(html)
+    # First h1 is handled by the template
+    soup.find('h1').decompose()
+    html = str(soup)
+    
+    subs = sorted(d for d in os.listdir(os.path.join(md_root, cat)) if os.path.isdir(os.path.join(md_root, cat, d)))
+    
+    return render_template('chapter.html', navigation=navigation_entries, content=html, path=fn[5:], title=t, number=n, subs=subs)
 
+@app.route('/IFC/RELEASE/IFC4x3/RC1/HTML/<name>/content.html')
+def schema(name):
+    md_root = "data/docs/schemas"
+    matches = [d for d in glob.glob(os.path.join(md_root, "**"), recursive=True) if os.path.isdir(d) and d.lower().endswith(name)]
+    if not matches: abort(404)
+    
+    t = matches[0].split(os.sep)[-1]
+    parent = sorted(os.listdir(os.path.dirname(matches[0])))
+    n1 = chapter_lookup(cat=matches[0].split(os.sep)[-2]).get('number')
+    n2 = parent.index(t) + 1
+    n = "%d.%d" % (n1, n2)
+    fn = os.path.join(matches[0], "README.md")
+    html = markdown.markdown(open(fn).read())
+    soup = BeautifulSoup(html)
+    # First h1 is handled by the template
+    soup.find('h1').decompose()
+    html = str(soup)
+
+    subs = []
+
+    return render_template('chapter.html', navigation=navigation_entries, content=html, path=fn[5:], title=t, number=n, subs=subs)
 
 @app.route('/search', methods=['GET', 'POST'])
 def search():
