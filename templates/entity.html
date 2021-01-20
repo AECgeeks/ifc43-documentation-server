@@ -1,6 +1,6 @@
 {% extends "main.html" %}
 {% block pagecontent %}
-<h2>6.3.{{ number }} {{ entity}}</h2>
+<h2>{{ number }} {{ entity}}</h2>
 
 <div id='contributors'></div>
 <a class='edit' href='https://github.com/buildingSMART/IFC4.3.x-development/blob/master/{{ path }}'>Edit on Github</a>
@@ -27,7 +27,7 @@ fetch('https://api.github.com/repos/buildingSMART/IFC4.3.x-development/commits?p
 });
 </script>
 
-<h3>6.3.{{ number }}.1 Semantic definitions at the entity</h3>
+<h3>{{ number }}.1 Semantic definitions at the entity</h3>
 
 {{ content | safe }}
 

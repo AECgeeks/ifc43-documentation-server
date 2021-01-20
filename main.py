@@ -86,7 +86,18 @@ def chapter_lookup(number=None, cat=None):
             
     return do_chapter_lookup(navigation_entries)
 
-entity_names = sorted(s.split('/')[-1][:-3] for s in glob.glob("data/docs/**/*.md", recursive=True))
+hierarchy = json.load(open("hierarchy.json"))
+
+entity_names = sorted(sum([schema.get('Entities', []) for _, cat in hierarchy for __, schema in cat], []))
+type_names = sorted(sum([schema.get('Types', []) for _, cat in hierarchy for __, schema in cat], []))
+
+name_to_number = {}
+
+for i, (cat, schemas) in enumerate(hierarchy, start=5):
+    for j, (schema_name, members) in enumerate(schemas, start=1):
+        for k, ke in enumerate(["Types", "Entities"], start=2):
+            for l, name in enumerate(members.get(ke, ()), start=1):
+                name_to_number[name] = ".".join(map(str, (i,j,k,l)))
 
 S = ifcopenshell.ifcopenshell_wrapper.schema_by_name('IFC4X3_RC1')
 
@@ -201,65 +212,75 @@ def get_figure(fig):
 @app.route(make_url('lexical/<resource>.htm'))
 def resource(resource):
     try:
-        idx = entity_names.index(resource) + 1
+        idx = name_to_number[resource]
     except:
         abort(404)
     
+    """
     package = entity_to_package.get(resource)
     if not package:
         abort(404)
-    
+    """
+        
     md = None    
     md_root = "data/docs/schemas"
-    for category in os.listdir(md_root):
-        for module in os.listdir(os.path.join(md_root, category)):
-            if module == package:
-                md = os.path.join("data/docs/schemas", category, module, "Entities", resource + ".md")
+    # for category in os.listdir(md_root):
+    #     for module in os.listdir(os.path.join(md_root, category)):
+    #         if module == package:
+    
+    md = os.path.join("data/docs/schemas", "*", "*", "*", resource + ".md")
+    
+    html = ''
                 
-    if not md:
-        abort(404)
+    if glob.glob(md):
         
-    with open(md, 'r', encoding='utf-8') as f:
+        md = glob.glob(md)[0]
+        
+        with open(md, 'r', encoding='utf-8') as f:
     
-        mdc = f.read()
+            mdc = f.read()
+        
+            if "Entities" in md:
     
-        mdc += '\n\nEntity inheritance\n--------\n\n```' + generate_inheritance_graph(resource) + '```'
+                mdc += '\n\nEntity inheritance\n--------\n\n```' + generate_inheritance_graph(resource) + '```'
     
-        html = markdown.markdown(
-            process_graphviz(resource, mdc),
-            extensions=['tables', 'fenced_code'])
+            html = markdown.markdown(
+                process_graphviz(resource, mdc),
+                extensions=['tables', 'fenced_code'])
         
-        first = True
+            soup = BeautifulSoup(html)
         
-        soup = BeautifulSoup(html)
+            # First h1 is handled by the template
+            try:
+                soup.find('h1').decompose()
+            except:
+                # only entities have H1?
+                pass
         
-        # First h1 is handled by the template
-        soup.find('h1').decompose()
-        
-        hs = []
-        # Renumber the headings
-        for i in list(range(7))[::-1]:
-            for h in soup.findAll('h%d' % i):
-                h.name = 'h%d' % (i + 2)
-                hs.append(h)
+            hs = []
+            # Renumber the headings
+            for i in list(range(7))[::-1]:
+                for h in soup.findAll('h%d' % i):
+                    h.name = 'h%d' % (i + 2)
+                    hs.append(h)
                 
-        # Change svg img references to embedded svg
-        # because otherwise URLS are not interactive
-        for img in soup.findAll("img"):
-            if img['src'].endswith('.svg'):
-                print(img['src'].split('/')[-1].split('.')[0])
-                entity, hash = img['src'].split('/')[-1].split('.')[0].split('_')
-                svg = BeautifulSoup(open(os.path.join('svgs', entity + "_" + hash + '.dot.svg')))
-                img.replaceWith(svg.find('svg'))
+            # Change svg img references to embedded svg
+            # because otherwise URLS are not interactive
+            for img in soup.findAll("img"):
+                if img['src'].endswith('.svg'):
+                    print(img['src'].split('/')[-1].split('.')[0])
+                    entity, hash = img['src'].split('/')[-1].split('.')[0].split('_')
+                    svg = BeautifulSoup(open(os.path.join('svgs', entity + "_" + hash + '.dot.svg')))
+                    img.replaceWith(svg.find('svg'))
         
-        html = str(soup)
+            html = str(soup)
         
-        return render_template('entity.html', navigation=navigation_entries, content=html, number=idx, entity=resource, path=md[5:])
+    return render_template('entity.html', navigation=navigation_entries, content=html, number=idx, entity=resource, path=md[5:])
 
 @app.route(make_url('listing'))
 @app.route('/')
 def listing():
-    items = [{'number': (i + 1), 'url': url_for('resource', resource=n), 'title': n} for i, n in enumerate(entity_names)]
+    items = [{'number': name_to_number[n], 'url': url_for('resource', resource=n), 'title': n} for n in sorted(entity_names + type_names)]
     return render_template('list.html', navigation=navigation_entries, items=items)
     
 @app.route(make_url('chapter-<n>/'))
@@ -272,11 +293,15 @@ def chapter(n):
     cat = t.split(" ")[0].lower()
     
     fn = os.path.join(md_root, cat, "README.md")
-    html = markdown.markdown(open(fn).read())
-    soup = BeautifulSoup(html)
-    # First h1 is handled by the template
-    soup.find('h1').decompose()
-    html = str(soup)
+    
+    if os.path.exists(fn):
+        html = markdown.markdown(open(fn).read())
+        soup = BeautifulSoup(html)
+        # First h1 is handled by the template
+        soup.find('h1').decompose()
+        html = str(soup)
+    else:
+    	html = ''
     
     subs = sorted(d for d in os.listdir(os.path.join(md_root, cat)) if os.path.isdir(os.path.join(md_root, cat, d)))
     
@@ -294,11 +319,15 @@ def schema(name):
     n2 = parent.index(t) + 1
     n = "%d.%d" % (n1, n2)
     fn = os.path.join(matches[0], "README.md")
-    html = markdown.markdown(open(fn).read())
-    soup = BeautifulSoup(html)
-    # First h1 is handled by the template
-    soup.find('h1').decompose()
-    html = str(soup)
+    
+    if os.path.exists(fn):
+        html = markdown.markdown(open(fn).read())
+        soup = BeautifulSoup(html)
+        # First h1 is handled by the template
+        soup.find('h1').decompose()
+        html = str(soup)
+    else:
+        html = ''
 
     subs = []
 
