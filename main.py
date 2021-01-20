@@ -15,6 +15,10 @@ from flask import Flask, send_file, render_template, abort, url_for, request, se
 
 app = Flask(__name__)
 
+base = '/IFC/RELEASE/IFC4x3/HTML'
+
+def make_url(fragment): return base + '/' + fragment
+
 entity_to_package = json.load(open("entity_to_package.json", encoding="utf-8"))
 
 navigation_entries = [
@@ -39,9 +43,9 @@ def make_entries(x):
         return type(x)(map(make_entries, x))
     
     elif x['title'] == 'Alphabetical listings':
-        url = '/IFC/RELEASE/IFC4x3/RC1/HTML/listing'
+        url = make_url('listing')
     elif type(x['number']) == int and x['number'] >= 5:
-        url = '/IFC/RELEASE/IFC4x3/RC1/HTML/chapter-%d/' % x['number']
+        url = make_url('chapter-%d/' % x['number'])
     else:
         url = '#'
     
@@ -190,11 +194,11 @@ def get_svg(entity, hash):
     return send_from_directory('svgs', entity + "_" + hash + '.dot.svg');
 """
 
-@app.route('/IFC/RELEASE/IFC4x3/RC1/HTML/figures/<fig>')
+@app.route(make_url('figures/<fig>'))
 def get_figure(fig):
     return send_from_directory('data/docs/figures', fig)
 
-@app.route('/IFC/RELEASE/IFC4x3/RC1/HTML/lexical/<resource>.htm')
+@app.route(make_url('lexical/<resource>.htm'))
 def resource(resource):
     try:
         idx = entity_names.index(resource) + 1
@@ -252,13 +256,13 @@ def resource(resource):
         
         return render_template('entity.html', navigation=navigation_entries, content=html, number=idx, entity=resource, path=md[5:])
 
-@app.route('/IFC/RELEASE/IFC4x3/RC1/HTML/listing')
+@app.route(make_url('listing'))
 @app.route('/')
 def listing():
     items = [{'number': (i + 1), 'url': url_for('resource', resource=n), 'title': n} for i, n in enumerate(entity_names)]
     return render_template('list.html', navigation=navigation_entries, items=items)
     
-@app.route('/IFC/RELEASE/IFC4x3/RC1/HTML/chapter-<n>/')
+@app.route(make_url('chapter-<n>/'))
 def chapter(n):
     try: n = int(n)
     except: pass
@@ -278,7 +282,7 @@ def chapter(n):
     
     return render_template('chapter.html', navigation=navigation_entries, content=html, path=fn[5:], title=t, number=n, subs=subs)
 
-@app.route('/IFC/RELEASE/IFC4x3/RC1/HTML/<name>/content.html')
+@app.route(make_url('<name>/content.html'))
 def schema(name):
     md_root = "data/docs/schemas"
     matches = [d for d in glob.glob(os.path.join(md_root, "**"), recursive=True) if os.path.isdir(d) and d.lower().endswith(name)]
