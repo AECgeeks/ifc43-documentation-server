@@ -40,7 +40,7 @@ def make_entries(x):
     
     elif x['title'] == 'Alphabetical listings':
         url = '/IFC/RELEASE/IFC4x3/RC1/HTML/listing'
-    elif type(x['number']) == int:
+    elif type(x['number']) == int and x['number'] >= 5:
         url = '/IFC/RELEASE/IFC4x3/RC1/HTML/chapter-%d/' % x['number']
     else:
         url = '#'
