@@ -272,6 +272,8 @@ def resource(resource):
                     entity, hash = img['src'].split('/')[-1].split('.')[0].split('_')
                     svg = BeautifulSoup(open(os.path.join('svgs', entity + "_" + hash + '.dot.svg')))
                     img.replaceWith(svg.find('svg'))
+                else:
+                    img['src'] = img['src'][9:]
         
             html = str(soup)
         
