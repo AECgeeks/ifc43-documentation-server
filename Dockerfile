@@ -4,9 +4,10 @@ MAINTAINER Thomas Krijnen <thomas@aecgeeks.org>
 RUN mkdir -p /usr/share/man/man1
 RUN apt-get update -y && apt-get install -y curl openjdk-11-jdk-headless python3 python3-distutils procps lsof supervisor graphviz unzip git
 RUN curl --silent --show-error --retry 5 https://bootstrap.pypa.io/get-pip.py | python3
-RUN python3 -m pip install flask Beautifulsoup4 Markdown gunicorn pysolr pydot
+RUN python3 -m pip install flask Beautifulsoup4 Markdown gunicorn pysolr pydot tabulate
 
-RUN curl --location --silent --show-error --retry 5 'https://www.apache.org/dyn/closer.lua?filename=lucene/solr/8.6.3/solr-8.6.3.tgz&action=download' -o - | tar zxf -
+RUN curl --location --silent --show-error --retry 5 'https://archive.apache.org/dist/lucene/solr/8.6.3/solr-8.6.3.tgz' -o - | tar zxf -
+RUN ls /
 RUN chmod +x /solr-8.6.3/bin/*
 
 RUN curl --silent --show-error --retry 5 -o /tmp/ifcopenshell_python.zip https://s3.amazonaws.com/ifcopenshell-builds/ifcopenshell-python-`python3 -c 'import sys;print("".join(map(str, sys.version_info[0:2])))'`-v0.6.0-c15fdc7-linux64.zip
