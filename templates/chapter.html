@@ -31,6 +31,45 @@ fetch('https://api.github.com/repos/buildingSMART/IFC4.3.x-development/commits?p
 
 {{ content | safe }}
 
+{% if toc %}
+
+{% for sub in subs %}
+
+<a href='chapter-{{loop.index}}'>{{ loop.index }} {{ sub[0] }}</a><br>
+
+{% set loop1 = loop %}
+
+{% for ssub in sub[1] %}
+
+&nbsp;&nbsp;<a href='{{ ssub[0] | lower }}/content.html'>{{ loop1.index }}.{{ loop.index }} {{ ssub[0] }}</a><br>
+
+{% set loop2 = loop %}
+
+&nbsp;&nbsp;&nbsp;&nbsp;<a href='{{ ssub[0] | lower }}/content.html'>{{ loop1.index }}.{{ loop2.index }}.1 Schema Definition</a><br>
+
+{% set loop3 = loop %}
+
+{% for a in ["Types", "Entities"] %}
+
+&nbsp;&nbsp;&nbsp;&nbsp;<a href='{{ ssub[0] | lower }}/content.html'>{{ loop1.index }}.{{ loop2.index }}.{{ loop.index + 1 }} {{ a }}</a><br>
+
+{% set loop4 = loop %}
+
+{% for x in ssub[1][a] %}
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href='lexical/{{ x }}.htm'>{{ loop1.index }}.{{ loop2.index }}.{{ loop4.index + 1 }}.{{ loop.index }} {{ x }}</a><br>
+
+{% endfor %}
+
+{% endfor %}
+
+{% endfor %}
+
+{% endfor %}
+
+
+{% else %}
+
 {% for sub in subs %}
 
 {% if sub is string %}
@@ -52,5 +91,7 @@ fetch('https://api.github.com/repos/buildingSMART/IFC4.3.x-development/commits?p
 {% endif %}
 
 {% endfor %}
+
+{% endif %}
 
 {% endblock %}

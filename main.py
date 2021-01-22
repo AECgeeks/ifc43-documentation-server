@@ -31,6 +31,9 @@ navigation_entries = [
     ("Examples", "Change logs", "Bibliography", "Index")
 ]
 
+content_names = ['scope','normative_references','terms_and_definitions','concepts']
+content_names_2 = ['cover','foreword','introduction','bibliography']
+
 def to_dict(x):
     if isinstance(x, (list, tuple)):
         return type(x)(map(to_dict, x))
@@ -46,10 +49,17 @@ def make_entries(x):
     
     elif x['title'] == 'Alphabetical listings':
         url = make_url('listing')
-    elif type(x['number']) == int and x['number'] >= 5:
-        url = make_url('chapter-%d/' % x['number'])
+    elif x['title'] == 'Contents':
+        url = make_url('toc.html')
+    elif type(x['number']) == int:
+        if  x['number'] >= 5:
+            url = make_url('chapter-%d/' % x['number'])
+        else:
+            url = make_url('content/' + content_names[x['number'] - 1] + '.htm')
     elif x['number'] in {'A', 'C'}:
         url = make_url('annex-%s.html' % x['number'].lower())
+    elif x['title'].lower() in content_names_2:
+        url = make_url('content/' + x['title'].lower() + '.htm')
     else:
         url = '#'
     
@@ -315,6 +325,31 @@ def chapter(n):
     
     return render_template('chapter.html', navigation=navigation_entries, content=html, path=fn[5:], title=t, number=n, subs=subs)
     
+@app.route(make_url('content/<s>.htm'))
+def content(s):
+    fn = "data/content"
+    fn = os.path.join(fn, s + ".md")
+    
+    if not os.path.exists(fn):
+        abort(404)
+    
+    try:
+        i = content_names.index(s)
+        number = i + 1
+        title = navigation_entries[1][i]['title']
+    except:
+        
+        try:
+            i = content_names_2.index(s)
+            number = ""
+            title = s[0].upper() + s[1:]
+        except:
+            abort(404)
+    
+    html = markdown.markdown(open(fn).read())
+    return render_template('chapter.html', navigation=navigation_entries, content=html, path=fn[5:], title=title, number=number, subs=[])
+
+    
 @app.route(make_url('annex-a.html'))
 def annex_a():
     url = "https://github.com/buildingSMART/IFC4.3.x-output/blob/master/IFC.exp"
@@ -325,6 +360,12 @@ def annex_a():
         (tabulate.tabulate([["IFC EXPRESS long form schema", '%s']], headers=["Format", "URL"], tablefmt='html') % \
             ("<a href='%(url)s'>%(url)s</a>" % locals()))
     return render_template('chapter.html', navigation=navigation_entries, content=html, path=None, title="Annex A", number="", subs=[])
+
+    
+@app.route(make_url('toc.html'))
+def toc():
+    subs = [(x['title'], []) for x in navigation_entries[1]] + hierarchy
+    return render_template('chapter.html', navigation=navigation_entries, content='', path=None, title="Contents", number="", subs=subs, toc=True)
 
 
 @app.route(make_url('annex-c.html'))
