@@ -3,6 +3,7 @@ import os
 import glob
 import json
 import hashlib
+import operator
 import subprocess
 
 import ifcopenshell
@@ -291,7 +292,8 @@ def chapter(n):
     except: pass
     
     md_root = "data/docs/schemas"
-    t = chapter_lookup(number=n).get('title')
+    chp = chapter_lookup(number=n)
+    t = chp.get('title')
     cat = t.split(" ")[0].lower()
     
     fn = os.path.join(md_root, cat, "README.md")
@@ -305,33 +307,36 @@ def chapter(n):
     else:
     	html = ''
     
-    subs = sorted(d for d in os.listdir(os.path.join(md_root, cat)) if os.path.isdir(os.path.join(md_root, cat, d)))
+    subs = [itms for t, itms in hierarchy if t == chp.get('title')][0]
+    subs = list(map(operator.itemgetter(0), subs))
     
     return render_template('chapter.html', navigation=navigation_entries, content=html, path=fn[5:], title=t, number=n, subs=subs)
 
 @app.route(make_url('<name>/content.html'))
 def schema(name):
     md_root = "data/docs/schemas"
-    matches = [d for d in glob.glob(os.path.join(md_root, "**"), recursive=True) if os.path.isdir(d) and d.lower().endswith(name)]
-    if not matches: abort(404)
     
-    t = matches[0].split(os.sep)[-1]
-    parent = sorted(os.listdir(os.path.dirname(matches[0])))
-    n1 = chapter_lookup(cat=matches[0].split(os.sep)[-2]).get('number')
-    n2 = parent.index(t) + 1
+    cat_full, schemas = [(t, itms) for t, itms in hierarchy if name in [i[0].lower() for i in itms]][0]
+    cat = cat_full.split(" ")[0].lower()
+    t, subs = [x for x in schemas if x[0].lower() == name][0]
+    chp = chapter_lookup(cat=cat)
+    
+    n1 = chp.get('number')
+    n2 = [s[0] for s in schemas].index(t) + 1
     n = "%d.%d" % (n1, n2)
-    fn = os.path.join(matches[0], "README.md")
+    fn = os.path.join(md_root, cat, t, "README.md")
     
     if os.path.exists(fn):
         html = markdown.markdown(open(fn).read())
         soup = BeautifulSoup(html)
         # First h1 is handled by the template
         soup.find('h1').decompose()
-        html = str(soup)
+        html = "<h2>" + n + ".1 Schema Definition</h2>" + str(soup)
     else:
         html = ''
 
-    subs = []
+    order = ["Types", "Entities"]
+    subs = sorted(subs.items(), key=lambda tup: order.index(tup[0]))
 
     return render_template('chapter.html', navigation=navigation_entries, content=html, path=fn[5:], title=t, number=n, subs=subs)
 
