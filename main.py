@@ -6,6 +6,7 @@ import hashlib
 import operator
 import subprocess
 
+import tabulate
 import ifcopenshell
 import pydot
 import pysolr
@@ -47,6 +48,8 @@ def make_entries(x):
         url = make_url('listing')
     elif type(x['number']) == int and x['number'] >= 5:
         url = make_url('chapter-%d/' % x['number'])
+    elif x['number'] in {'A', 'C'}:
+        url = make_url('annex-%s.html' % x['number'].lower())
     else:
         url = '#'
     
@@ -311,6 +314,34 @@ def chapter(n):
     subs = list(map(operator.itemgetter(0), subs))
     
     return render_template('chapter.html', navigation=navigation_entries, content=html, path=fn[5:], title=t, number=n, subs=subs)
+    
+@app.route(make_url('annex-a.html'))
+def annex_a():
+    url = "https://github.com/buildingSMART/IFC4.3.x-output/blob/master/IFC.exp"
+    html = "<h2>Computer interpretable listings</h2>" + \
+        "<p>This annex contains a listing of the complete schema combining all definitions of clauses 5, 6, 7, and 8 without comments " + \
+        "or other explanatory text. These listings are available in computer-interpretable form that may be parsed by computer.</p>" + \
+        "<p>Official schema publications for this release are at the following URLs:</p>" + \
+        (tabulate.tabulate([["IFC EXPRESS long form schema", '%s']], headers=["Format", "URL"], tablefmt='html') % \
+            ("<a href='%(url)s'>%(url)s</a>" % locals()))
+    return render_template('chapter.html', navigation=navigation_entries, content=html, path=None, title="Annex A", number="", subs=[])
+
+
+@app.route(make_url('annex-c.html'))
+def annex_c():
+    html = "<h2>Inheritance listings</h2>" + \
+        "<p>This annex contains listings of entity definitions organized by inheritance.</p>"
+    
+    def transform(s):
+        s = s.strip('\n')
+        padding = s.count(' ')
+        entity = "".join([c for c in s if c != ' '])
+        return '<tr><td>' + '&nbsp;' * padding * 4 + "<a href='" + url_for('resource', resource=entity) + "'>" + entity + "</a> </td><td>" + name_to_number[entity] + "</td>"
+    
+    html += "<table style='width:fit-content'>" +  "".join(map(transform, open("inheritance_listing.txt"))) + "</table>"
+        
+    return render_template('chapter.html', navigation=navigation_entries, content=html, path=None, title="Annex C", number="", subs=[])
+
 
 @app.route(make_url('<name>/content.html'))
 def schema(name):
