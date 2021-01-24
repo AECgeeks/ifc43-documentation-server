@@ -23,7 +23,7 @@ ADD wsgi.py main.py parse_xmi.py transform_to_xml.py /
 ADD templates/* /templates/
 ADD https://api.github.com/repos/buildingSMART/IFC4.3.x-development/git/refs/heads/master /tmp/data_version.json
 RUN git clone https://github.com/buildingSMART/IFC4.3.x-development /data
-# ADD data/ /data/
+RUN git clone https://github.com/buildingSMART/Sample-Test-Files /examples
 
 RUN mkdir /svgs
 RUN mkdir /xml
