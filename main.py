@@ -56,7 +56,7 @@ def make_entries(x):
             url = make_url('chapter-%d/' % x['number'])
         else:
             url = make_url('content/' + content_names[x['number'] - 1] + '.htm')
-    elif x['number'] in {'A', 'C'}:
+    elif x['number'] in {'A', 'C', 'D'}:
         url = make_url('annex-%s.html' % x['number'].lower())
     elif x['title'].lower() in content_names_2:
         url = make_url('content/' + x['title'].lower() + '.htm')
@@ -382,7 +382,21 @@ def annex_c():
     html += "<table style='width:fit-content'>" +  "".join(map(transform, open("inheritance_listing.txt"))) + "</table>"
         
     return render_template('chapter.html', navigation=navigation_entries, content=html, path=None, title="Annex C", number="", subs=[])
+    
+@app.route(make_url('annex-d.html'))
+def annex_d():
+    subs = map(os.path.basename, glob.glob("data/output/IFC.xml/*.png"))
+    subs = sorted(s[:-4] + ":" + url_for('annex_d_diagram_page', s=s[:-4]) for s in subs)
+    return render_template('chapter.html', navigation=navigation_entries, content='<h2>Diagrams</h2>', path=None, title="Annex D", number="", subs=subs)
+    
+@app.route(make_url('annex_d/<s>.html'))
+def annex_d_diagram_page(s):
+    img = "<h2>" + s + " diagram</h2><img src='"+s+".png'/>"
+    return render_template('chapter.html', navigation=navigation_entries, content=img, path=None, title="Annex D", number="", subs=[])
 
+@app.route(make_url('annex_d/<s>.png'))
+def annex_d_diagram(s):
+    return send_from_directory("data/output/IFC.xml", s + ".png")
 
 @app.route(make_url('<name>/content.html'))
 def schema(name):
