@@ -56,7 +56,7 @@ def make_entries(x):
             url = make_url('chapter-%d/' % x['number'])
         else:
             url = make_url('content/' + content_names[x['number'] - 1] + '.htm')
-    elif x['number'] in {'A', 'C', 'D'}:
+    elif x['number'] in {'A', 'C', 'D', 'E'}:
         url = make_url('annex-%s.html' % x['number'].lower())
     elif x['title'].lower() in content_names_2:
         url = make_url('content/' + x['title'].lower() + '.htm')
@@ -294,7 +294,6 @@ def resource(resource):
     return render_template('entity.html', navigation=navigation_entries, content=html, number=idx, entity=resource, path=md[5:])
 
 @app.route(make_url('listing'))
-@app.route('/')
 def listing():
     items = [{'number': name_to_number[n], 'url': url_for('resource', resource=n), 'title': n} for n in sorted(entity_names + type_names)]
     return render_template('list.html', navigation=navigation_entries, items=items)
@@ -325,8 +324,10 @@ def chapter(n):
     
     return render_template('chapter.html', navigation=navigation_entries, content=html, path=fn[5:], title=t, number=n, subs=subs)
     
+
+@app.route('/')
 @app.route(make_url('content/<s>.htm'))
-def content(s):
+def content(s='cover'):
     fn = "data/content"
     fn = os.path.join(fn, s + ".md")
     
@@ -398,6 +399,24 @@ def annex_d_diagram_page(s):
 def annex_d_diagram(s):
     return send_from_directory("data/output/IFC.xml", s + ".png")
 
+
+@app.route(make_url('annex-e.html'))
+def annex_e():
+    subs = map(os.path.basename, filter(os.path.isdir, glob.glob("examples/IFC 4.3/*")))
+    subs = sorted(s + ":" + url_for('annex_e_example_page', s=s) for s in subs)
+    return render_template('chapter.html', navigation=navigation_entries, content='<h2>Examples</h2>', path=None, title="Annex E", number="", subs=subs)
+    
+@app.route(make_url('annex_e/<s>.html'))
+def annex_e_example_page(s):
+    fn = glob.glob(os.path.join("examples/IFC 4.3", s, "*.md"))[0]
+    html = '<p></p>' + markdown.markdown(open(fn).read(), extensions=['tables', 'fenced_code'])
+    code = open(glob.glob(os.path.join("examples/IFC 4.3", s, "*.ifc"))[0]).read()
+    html += "<h2>Source</h2>"
+    html += "<pre>" + code + "</pre>"
+    path_repo = 'buildingSMART/Sample-Test-Files'
+    path = fn[9:]
+    return render_template('chapter.html', navigation=navigation_entries, content=html, path=path, title="Annex E", number="", subs=[], repo=path_repo)
+
 @app.route(make_url('<name>/content.html'))
 def schema(name):
     md_root = "data/docs/schemas"
@@ -413,7 +432,7 @@ def schema(name):
     fn = os.path.join(md_root, cat, t, "README.md")
     
     if os.path.exists(fn):
-        html = markdown.markdown(open(fn).read())
+        html = markdown.markdown(open(fn).read(), extensions=['sane_lists'])
         soup = BeautifulSoup(html)
         # First h1 is handled by the template
         soup.find('h1').decompose()

@@ -1,3 +1,6 @@
 [submodule "data"]
 	path = data
 	url = https://github.com/buildingSMART/IFC4.3.x-development
+[submodule "examples"]
+	path = examples
+	url = https://github.com/buildingSMART/Sample-Test-Files
