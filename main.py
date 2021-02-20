@@ -22,6 +22,7 @@ def make_url(fragment): return base + '/' + fragment
 
 entity_to_package = json.load(open("entity_to_package.json", encoding="utf-8"))
 entity_supertype = json.load(open("entity_supertype.json", encoding="utf-8"))
+concepts = json.load(open("concepts.json", encoding="utf-8"))
 
 navigation_entries = [
     ("Cover", "Contents", "Foreword", "Introduction"),
@@ -130,10 +131,11 @@ def generate_inheritance_graph(current_entity):
             'color':'black',
             'fillcolor':'grey43',
             'fontcolor':'white',
-            'height':'0.3',
+            'fontsize': '10',
+            'height':'0.2',
             'shape':'rectangle',
             'style':'filled',
-            'width':'4'
+            'width':'3',
         }
         for kv in di.items():
             n.set(*kv)
@@ -256,7 +258,7 @@ def resource(resource):
     
                 try:
                     # @todo we still need to properly implement inheritance based on XMI
-                    mdc += '\n\nEntity inheritance\n--------\n\n```' + generate_inheritance_graph(resource) + '```'
+                    mdc += '\n\n' + idx + '.2 Entity inheritance\n===========\n\n```' + generate_inheritance_graph(resource) + '```'
                 except:
                     pass
     
@@ -292,6 +294,22 @@ def resource(resource):
                     img['src'] = img['src'][9:]
         
             html = str(soup)
+            
+            if "Entities" in md:
+            
+                usage = concepts.get(resource, {}).items()
+                
+                if usage:
+                    html += "<h3>" + idx + ".3 Definitions applying to General Usage</h3>"
+            
+                    for n, (concept, data) in enumerate(usage, start=1):
+                        html += "<h4>" + idx + ".3.%d " % n + concept + "</h4>"
+                        html += data['definition']
+                        vals = data['parameters'].values()
+                        # transpose
+                        vals = list(map(list, zip(*vals)))
+                        html += tabulate.tabulate(vals, headers=data['parameters'].keys(), tablefmt='html')
+                        html += "<pre>" + data['rules'] + "</pre>"
         
     return render_template('entity.html', navigation=navigation_entries, content=html, number=idx, entity=resource, path=md[5:])
 
