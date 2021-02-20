@@ -7,7 +7,6 @@ import operator
 import subprocess
 
 import tabulate
-import ifcopenshell
 import pydot
 import pysolr
 import markdown
@@ -22,6 +21,7 @@ base = '/IFC/RELEASE/IFC4x3/HTML'
 def make_url(fragment): return base + '/' + fragment
 
 entity_to_package = json.load(open("entity_to_package.json", encoding="utf-8"))
+entity_supertype = json.load(open("entity_supertype.json", encoding="utf-8"))
 
 navigation_entries = [
     ("Cover", "Contents", "Foreword", "Introduction"),
@@ -113,10 +113,8 @@ for i, (cat, schemas) in enumerate(hierarchy, start=5):
             for l, name in enumerate(members.get(ke, ()), start=1):
                 name_to_number[name] = ".".join(map(str, (i,j,k,l)))
 
-S = ifcopenshell.ifcopenshell_wrapper.schema_by_name('IFC4X3_RC1')
-
 def generate_inheritance_graph(current_entity):
-    i = S.declaration_by_name(current_entity)
+    i = current_entity
     g = pydot.Graph('dot_inheritance', graph_type='graph')
     di = {
         'rankdir': 'BT',
@@ -127,7 +125,7 @@ def generate_inheritance_graph(current_entity):
 
     previous = None
     while i:
-        n = pydot.Node(i.name())
+        n = pydot.Node(i)
         di = {
             'color':'black',
             'fillcolor':'grey43',
@@ -146,7 +144,7 @@ def generate_inheritance_graph(current_entity):
             
         previous = n
         
-        i = i.supertype()
+        i = entity_supertype.get(i)
         
     return g.to_string()
     
@@ -256,7 +254,11 @@ def resource(resource):
         
             if "Entities" in md:
     
-                mdc += '\n\nEntity inheritance\n--------\n\n```' + generate_inheritance_graph(resource) + '```'
+                try:
+                    # @todo we still need to properly implement inheritance based on XMI
+                    mdc += '\n\nEntity inheritance\n--------\n\n```' + generate_inheritance_graph(resource) + '```'
+                except:
+                    pass
     
             html = markdown.markdown(
                 process_graphviz(resource, mdc),

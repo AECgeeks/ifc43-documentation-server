@@ -101,6 +101,8 @@ with open("inheritance_listing.txt", "w") as f:
          
     for x in sorted(roots):
         do_print(x)
-        
+
+
+json.dump(supertype, open("entity_supertype.json", "w", encoding="utf-8"))
 json.dump(entity_to_package, open("entity_to_package.json", "w", encoding="utf-8"))
 json.dump(hierarchy, open("hierarchy.json", "w", encoding="utf-8"))
