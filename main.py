@@ -4,12 +4,16 @@ import glob
 import json
 import hashlib
 import operator
+import itertools
 import subprocess
+
+from collections import defaultdict
 
 import tabulate
 import pydot
 import pysolr
 import markdown
+
 from bs4 import BeautifulSoup
 
 from flask import Flask, send_file, render_template, abort, url_for, request, send_from_directory
@@ -297,19 +301,39 @@ def resource(resource):
             
             if "Entities" in md:
             
-                usage = concepts.get(resource, {}).items()
+                ty = resource
+                dicts = []
+                while ty is not None:
+                    dicts.append(concepts.get(ty, {}))
+                    ty = entity_supertype.get(ty)
+                    
+                usage = {}
+                # in reverse so that the most-specialized are retained
+                for d in reversed(dicts):
+                    usage.update(d)                
                 
                 if usage:
                     html += "<h3>" + idx + ".3 Definitions applying to General Usage</h3>"
             
-                    for n, (concept, data) in enumerate(usage, start=1):
+                    for n, (concept, data) in enumerate(sorted(usage.items()), start=1):
                         html += "<h4>" + idx + ".3.%d " % n + concept + "</h4>"
-                        html += data['definition']
-                        vals = data['parameters'].values()
+                        html += data['definition'].replace("../../", "")
+                        
+                        keys = set()
+                        for d in dicts:
+                            keys |= d.get(concept, {}).get('parameters', {}).keys()
+                            
+                        params = defaultdict(list)
+                        for d in dicts:
+                            for k in keys:
+                                params[k] += d.get(concept, {}).get('parameters', {}).get(k, [])
+                                
+                        print(params)
+                            
                         # transpose
-                        vals = list(map(list, zip(*vals)))
-                        html += tabulate.tabulate(vals, headers=data['parameters'].keys(), tablefmt='html')
-                        html += "<pre>" + data['rules'] + "</pre>"
+                        vals = list(map(list, itertools.zip_longest(*params.values())))
+                        html += tabulate.tabulate(vals, headers=params.keys(), tablefmt='html')
+                        # html += "<pre>" + data['rules'] + "</pre>"
         
     return render_template('entity.html', navigation=navigation_entries, content=html, number=idx, entity=resource, path=md[5:])
 
