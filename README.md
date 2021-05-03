@@ -1,6 +1,8 @@
 IFC 4.3 Documentation server
 ============================
 
+This code has been moved to https://github.com/buildingSMART/IFC4.3.x-development/tree/master/server
+
 ##### Introduction
 
 This repository illustrates a workflow for collaborative editing of the IFC Documentation. 
